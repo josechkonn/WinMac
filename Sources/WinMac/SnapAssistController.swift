@@ -51,6 +51,10 @@ private struct SnapAssistOverlayView: View {
     var body: some View {
         ZStack {
             FrostedBackground()
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    model.onDismiss?()
+                }
 
             VStack(spacing: 10) {
                 // Header
@@ -115,6 +119,11 @@ private struct SnapAssistOverlayView: View {
                         }
                         .padding(.horizontal, 14)
                         .padding(.bottom, 14)
+                        .frame(minHeight: geo.size.height, alignment: .top)
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            model.onDismiss?()
+                        }
                     }
                 }
             }

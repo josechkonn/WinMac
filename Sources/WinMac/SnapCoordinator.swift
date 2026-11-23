@@ -1,3 +1,4 @@
+import AppKit
 import CoreGraphics
 import Foundation
 import WinMacCore
@@ -10,6 +11,8 @@ final class SnapCoordinator {
     private let snapAssist = SnapAssistController()
     private var records: [WindowKey: WindowSnapRecord] = [:]
     private var pendingAssistTask: Task<Void, Never>?
+    private var flagsGlobalMonitor: Any?
+    private var flagsLocalMonitor: Any?
 
     var isEnabled: Bool = true
     var isSnapAssistEnabled: Bool = true {
@@ -74,8 +77,13 @@ final class SnapCoordinator {
                 )
 
                 if isSnapAssistEnabled,
+                   newState != .maximized,
                    let targetDisplay = displays.first(where: { $0.id == targetDisplayID }) {
-                    scheduleSnapAssist(afterSnapping: newState, snappedKey: window.key, on: targetDisplay)
+                    scheduleSnapAssistOnModifierRelease(
+                        afterSnapping: newState,
+                        snappedKey: window.key,
+                        on: targetDisplay
+                    )
                 }
             }
         }
@@ -84,39 +92,98 @@ final class SnapCoordinator {
     private func cancelSnapAssist() {
         pendingAssistTask?.cancel()
         pendingAssistTask = nil
+        removeFlagsMonitors()
         snapAssist.dismiss()
     }
 
-    private func scheduleSnapAssist(
+    private func modifiersStillHeld() -> Bool {
+        let flags = CGEventSource.flagsState(.combinedSessionState)
+        return flags.contains(.maskControl) || flags.contains(.maskAlternate)
+    }
+
+    private func scheduleSnapAssistOnModifierRelease(
         afterSnapping snappedState: SnapState,
         snappedKey: WindowKey,
         on display: DisplayFrame
     ) {
+        removeFlagsMonitors()
         pendingAssistTask?.cancel()
-        pendingAssistTask = Task { @MainActor [weak self] in
-            // Short delay so rapid chaining (e.g. Left -> Up) doesn't flash the overlay prematurely
-            try? await Task.sleep(for: .milliseconds(180))
-            guard let self, !Task.isCancelled, self.isEnabled, self.isSnapAssistEnabled else { return }
 
-            let candidates = self.windowEnumerator.visibleCandidates(excluding: snappedKey)
-            guard !candidates.isEmpty else { return }
+        // If user already released Control + Option, present right away
+        if !modifiersStillHeld() {
+            presentSnapAssist(afterSnapping: snappedState, snappedKey: snappedKey, on: display)
+            return
+        }
 
-            let otherFrames = candidates.map(\.frame)
-            let offers = SnapAssistPolicy.offers(
-                afterSnapping: snappedState,
-                on: display,
-                otherWindowFrames: otherFrames
-            )
-            guard !offers.isEmpty else { return }
+        let triggerIfReleased: @MainActor () -> Void = { [weak self] in
+            guard let self, !self.modifiersStillHeld() else { return }
+            self.removeFlagsMonitors()
+            self.pendingAssistTask?.cancel()
+            self.pendingAssistTask = nil
+            self.presentSnapAssist(afterSnapping: snappedState, snappedKey: snappedKey, on: display)
+        }
 
-            self.snapAssist.present(
-                offers: offers,
-                candidates: candidates,
-                screenService: self.screenService,
-                enumerator: self.windowEnumerator
-            ) { [weak self] candidate, chosenOffer in
-                self?.placeCandidate(candidate, into: chosenOffer)
+        flagsGlobalMonitor = NSEvent.addGlobalMonitorForEvents(matching: .flagsChanged) { _ in
+            Task { @MainActor in
+                triggerIfReleased()
             }
+        }
+        flagsLocalMonitor = NSEvent.addLocalMonitorForEvents(matching: .flagsChanged) { event in
+            Task { @MainActor in
+                triggerIfReleased()
+            }
+            return event
+        }
+
+        // Lightweight safety poll in case macOS swallows a flagsChanged event (e.g. secure input)
+        pendingAssistTask = Task { @MainActor [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .milliseconds(45))
+                guard let self, !Task.isCancelled else { return }
+                if !self.modifiersStillHeld() {
+                    triggerIfReleased()
+                    return
+                }
+            }
+        }
+    }
+
+    private func presentSnapAssist(
+        afterSnapping snappedState: SnapState,
+        snappedKey: WindowKey,
+        on display: DisplayFrame
+    ) {
+        guard isEnabled, isSnapAssistEnabled else { return }
+
+        let candidates = windowEnumerator.visibleCandidates(excluding: snappedKey)
+        guard !candidates.isEmpty else { return }
+
+        let otherFrames = candidates.map(\.frame)
+        let offers = SnapAssistPolicy.offers(
+            afterSnapping: snappedState,
+            on: display,
+            otherWindowFrames: otherFrames
+        )
+        guard !offers.isEmpty else { return }
+
+        snapAssist.present(
+            offers: offers,
+            candidates: candidates,
+            screenService: screenService,
+            enumerator: windowEnumerator
+        ) { [weak self] candidate, chosenOffer in
+            self?.placeCandidate(candidate, into: chosenOffer)
+        }
+    }
+
+    private func removeFlagsMonitors() {
+        if let m = flagsGlobalMonitor {
+            NSEvent.removeMonitor(m)
+            flagsGlobalMonitor = nil
+        }
+        if let m = flagsLocalMonitor {
+            NSEvent.removeMonitor(m)
+            flagsLocalMonitor = nil
         }
     }
 

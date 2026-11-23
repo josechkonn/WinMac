@@ -300,4 +300,43 @@ struct SnapStateMachineTests {
         )
         #expect(detected == .floating)
     }
+
+    @Test("SnapAssistPolicy offers opposite half or remaining quarter when empty")
+    func snapAssistOffers() {
+        // After snapping Left Half with no window in Right Half -> offers Right Half
+        let rightOffer = SnapAssistPolicy.offer(
+            afterSnapping: .leftHalf,
+            on: primary,
+            otherWindowFrames: [original]
+        )
+        #expect(rightOffer?.targetState == .rightHalf)
+        #expect(rightOffer?.targetFrame == SnapStateMachine.frame(for: .rightHalf, in: primary.visibleFrame))
+
+        // If Right Half is already occupied -> returns nil
+        let rightOccupied = SnapAssistPolicy.offer(
+            afterSnapping: .leftHalf,
+            on: primary,
+            otherWindowFrames: [SnapStateMachine.frame(for: .rightHalf, in: primary.visibleFrame)]
+        )
+        #expect(rightOccupied == nil)
+
+        // After snapping Top-Left Quarter -> offers Bottom-Left Quarter first
+        let quarterOffer = SnapAssistPolicy.offer(
+            afterSnapping: .topLeftQuarter,
+            on: primary,
+            otherWindowFrames: [original]
+        )
+        #expect(quarterOffer?.targetState == .bottomLeftQuarter)
+
+        // If Bottom-Left is occupied -> falls back to Right Half
+        let fallbackOffer = SnapAssistPolicy.offer(
+            afterSnapping: .topLeftQuarter,
+            on: primary,
+            otherWindowFrames: [SnapStateMachine.frame(for: .bottomLeftQuarter, in: primary.visibleFrame)]
+        )
+        #expect(fallbackOffer?.targetState == .rightHalf)
+
+        // Maximized never triggers Snap Assist
+        #expect(SnapAssistPolicy.offer(afterSnapping: .maximized, on: primary, otherWindowFrames: [original]) == nil)
+    }
 }

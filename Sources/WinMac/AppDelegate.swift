@@ -9,6 +9,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private let snapCoordinator = SnapCoordinator()
     private var permissionTimer: Timer?
     private var isPaused = false
+    private let snapAssistDefaultsKey = "snapAssistEnabled"
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         if let bundleID = Bundle.main.bundleIdentifier {
@@ -18,6 +19,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 return
             }
         }
+
+        if UserDefaults.standard.object(forKey: snapAssistDefaultsKey) == nil {
+            UserDefaults.standard.set(true, forKey: snapAssistDefaultsKey)
+        }
+        snapCoordinator.isSnapAssistEnabled = UserDefaults.standard.bool(forKey: snapAssistDefaultsKey)
 
         setupStatusItem()
         startHotkeys()
@@ -149,6 +155,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         pauseItem.target = self
         menu.addItem(pauseItem)
 
+        let assistItem = NSMenuItem(
+            title: "Sugerencias al acoplar (Snap Assist)",
+            action: #selector(toggleSnapAssist),
+            keyEquivalent: ""
+        )
+        assistItem.target = self
+        assistItem.state = snapCoordinator.isSnapAssistEnabled ? .on : .off
+        menu.addItem(assistItem)
+
         let loginItem = NSMenuItem(
             title: "Iniciar al encender macOS",
             action: #selector(toggleLaunchAtLogin),
@@ -178,6 +193,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         isPaused.toggle()
         snapCoordinator.isEnabled = !isPaused
         updateStatusIcon(for: statusItem)
+    }
+
+    @objc private func toggleSnapAssist() {
+        let next = !snapCoordinator.isSnapAssistEnabled
+        snapCoordinator.isSnapAssistEnabled = next
+        UserDefaults.standard.set(next, forKey: snapAssistDefaultsKey)
     }
 
     @objc private func toggleLaunchAtLogin() {

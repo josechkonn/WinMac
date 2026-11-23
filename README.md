@@ -25,6 +25,7 @@ A diferencia de los gestores clásicos con atajos estáticos por cuadrante, en W
 - **`⌃⌥ + ↓`** desde Cuadrante Superior Izquierdo → vuelve a **Mitad Izquierda (1/2)**
 - **`⌃⌥ + ↓`** otra vez → **Cuadrante Inferior Izquierdo (1/4)**
 - **`⌃⌥ + →`** desde Mitad Izquierda → **Restaura a Flotante** (y otro `⌃⌥ + →` la pasa a **Mitad Derecha**)
+- **Snap Assist (Sugerencias automáticas):** al acoplar una ventana a una mitad o cuadrante, WinMac muestra automáticamente un panel translúcido en el espacio vacío con tus demás ventanas abiertas para colocar una con un clic, con las teclas `1`–`9` o con flechas + `Enter` (`Esc` para cerrar).
 
 ## Tabla de Atajos
 

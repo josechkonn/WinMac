@@ -113,6 +113,12 @@ final class FocusedWindow {
         return status == .success
     }
 
+    func raiseAndActivate() {
+        AXUIElementPerformAction(element, kAXRaiseAction as CFString)
+        AXUIElementSetAttributeValue(element, kAXMainAttribute as CFString, kCFBooleanTrue)
+        NSRunningApplication(processIdentifier: pid)?.activate(options: [.activateAllWindows])
+    }
+
     @discardableResult
     private func writePosition(_ point: CGPoint) -> AXError {
         var pt = point
@@ -210,5 +216,34 @@ final class AXWindowController {
             appName: appName,
             windowID: cgWindowID
         )
+    }
+
+    /// Resolves a specific window by `(pid, windowID)` using AXUIElement windows list.
+    func window(for key: WindowKey) -> FocusedWindow? {
+        guard AXIsProcessTrusted() else { return nil }
+        let appElement = AXUIElementCreateApplication(key.pid)
+        var windowsRef: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(appElement, kAXWindowsAttribute as CFString, &windowsRef) == .success,
+              let axWindows = windowsRef as? [AXUIElement]
+        else {
+            return nil
+        }
+
+        let appName = NSRunningApplication(processIdentifier: key.pid)?.localizedName ?? "pid:\(key.pid)"
+
+        for win in axWindows {
+            var cgID: CGWindowID = 0
+            if _AXUIElementGetWindow(win, &cgID) == .success, cgID == key.windowID {
+                return FocusedWindow(
+                    element: win,
+                    appElement: appElement,
+                    pid: key.pid,
+                    appName: appName,
+                    windowID: cgID
+                )
+            }
+        }
+
+        return nil
     }
 }

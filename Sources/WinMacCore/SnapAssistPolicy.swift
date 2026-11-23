@@ -1,7 +1,7 @@
 import CoreGraphics
 import Foundation
 
-public struct SnapAssistOffer: Equatable, Sendable {
+public struct SnapAssistOffer: Equatable, Hashable, Sendable {
     public let targetState: SnapState
     public let targetFrame: CGRect
     public let display: DisplayFrame
@@ -11,18 +11,23 @@ public struct SnapAssistOffer: Equatable, Sendable {
         self.targetFrame = targetFrame
         self.display = display
     }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(targetState)
+        hasher.combine(display.id)
+    }
 }
 
 public enum SnapAssistPolicy {
-    /// Determines the best remaining empty zone to offer Snap Assist after snapping a window to `snappedState`.
-    /// Checks `occupiedFrames` (other visible windows on the same display) so we don't offer a zone
-    /// that is already neatly filled by another window.
-    public static func offer(
+    /// Returns all remaining empty zones to offer Snap Assist after snapping a window to `snappedState`.
+    /// - For halves: returns the opposite half (if unoccupied).
+    /// - For quarters: returns up to all 3 remaining unoccupied quarters so the user can fill all 4 corners.
+    public static func offers(
         afterSnapping snappedState: SnapState,
         on display: DisplayFrame,
         otherWindowFrames: [CGRect],
         tolerance: CGFloat = SnapStateMachine.defaultTolerance
-    ) -> SnapAssistOffer? {
+    ) -> [SnapAssistOffer] {
         let candidateStates: [SnapState]
         switch snappedState {
         case .leftHalf:
@@ -30,27 +35,24 @@ public enum SnapAssistPolicy {
         case .rightHalf:
             candidateStates = [.leftHalf]
         case .topLeftQuarter:
-            candidateStates = [.bottomLeftQuarter, .rightHalf, .topRightQuarter, .bottomRightQuarter]
+            candidateStates = [.topRightQuarter, .bottomLeftQuarter, .bottomRightQuarter]
         case .bottomLeftQuarter:
-            candidateStates = [.topLeftQuarter, .rightHalf, .bottomRightQuarter, .topRightQuarter]
+            candidateStates = [.bottomRightQuarter, .topLeftQuarter, .topRightQuarter]
         case .topRightQuarter:
-            candidateStates = [.bottomRightQuarter, .leftHalf, .topLeftQuarter, .bottomLeftQuarter]
+            candidateStates = [.topLeftQuarter, .bottomRightQuarter, .bottomLeftQuarter]
         case .bottomRightQuarter:
-            candidateStates = [.topRightQuarter, .leftHalf, .bottomLeftQuarter, .topLeftQuarter]
+            candidateStates = [.bottomLeftQuarter, .topRightQuarter, .topLeftQuarter]
         case .floating, .maximized:
-            return nil
+            return []
         }
 
-        for state in candidateStates {
+        return candidateStates.compactMap { state in
             let zoneFrame = SnapStateMachine.frame(for: state, in: display.visibleFrame)
             let isAlreadyOccupied = otherWindowFrames.contains { frame in
                 SnapStateMachine.framesMatch(frame, zoneFrame, tolerance: tolerance)
             }
-            if !isAlreadyOccupied {
-                return SnapAssistOffer(targetState: state, targetFrame: zoneFrame, display: display)
-            }
+            guard !isAlreadyOccupied else { return nil }
+            return SnapAssistOffer(targetState: state, targetFrame: zoneFrame, display: display)
         }
-
-        return nil
     }
 }

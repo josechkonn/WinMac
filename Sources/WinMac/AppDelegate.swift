@@ -164,6 +164,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         assistItem.state = snapCoordinator.isSnapAssistEnabled ? .on : .off
         menu.addItem(assistItem)
 
+        let screenRecGranted = CGPreflightScreenCaptureAccess()
+        let previewItem = NSMenuItem(
+            title: screenRecGranted
+                ? "Vistas previas en vivo (Activas)"
+                : "Activar vistas previas en vivo…",
+            action: #selector(openScreenRecordingSettings),
+            keyEquivalent: ""
+        )
+        previewItem.target = self
+        previewItem.state = screenRecGranted ? .on : .off
+        menu.addItem(previewItem)
+
         let loginItem = NSMenuItem(
             title: "Iniciar al encender macOS",
             action: #selector(toggleLaunchAtLogin),
@@ -199,6 +211,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let next = !snapCoordinator.isSnapAssistEnabled
         snapCoordinator.isSnapAssistEnabled = next
         UserDefaults.standard.set(next, forKey: snapAssistDefaultsKey)
+    }
+
+    @objc private func openScreenRecordingSettings() {
+        CGRequestScreenCaptureAccess()
+        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture") {
+            NSWorkspace.shared.open(url)
+        }
     }
 
     @objc private func toggleLaunchAtLogin() {

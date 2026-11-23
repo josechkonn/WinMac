@@ -102,19 +102,17 @@ final class SnapCoordinator {
             guard !candidates.isEmpty else { return }
 
             let otherFrames = candidates.map(\.frame)
-            guard let offer = SnapAssistPolicy.offer(
+            let offers = SnapAssistPolicy.offers(
                 afterSnapping: snappedState,
                 on: display,
                 otherWindowFrames: otherFrames
-            ) else {
-                return
-            }
+            )
+            guard !offers.isEmpty else { return }
 
-            let cocoaFrame = self.screenService.axToCocoa(offer.targetFrame)
             self.snapAssist.present(
-                offer: offer,
-                cocoaFrame: cocoaFrame,
+                offers: offers,
                 candidates: candidates,
+                screenService: self.screenService,
                 enumerator: self.windowEnumerator
             ) { [weak self] candidate, chosenOffer in
                 self?.placeCandidate(candidate, into: chosenOffer)

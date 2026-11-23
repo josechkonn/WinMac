@@ -15,6 +15,8 @@ public enum SnapState: String, CaseIterable, Equatable, Sendable {
     case maximized
     case leftHalf
     case rightHalf
+    case topHalf
+    case bottomHalf
     case topLeftQuarter
     case bottomLeftQuarter
     case topRightQuarter

@@ -338,5 +338,78 @@ struct SnapStateMachineTests {
 
         // Maximized never triggers Snap Assist
         #expect(SnapAssistPolicy.offers(afterSnapping: .maximized, on: primary, otherWindowFrames: [original]).isEmpty)
+
+        // Top Half offers Bottom Half
+        let bottomOffer = SnapAssistPolicy.offers(afterSnapping: .topHalf, on: primary, otherWindowFrames: [original])
+        #expect(bottomOffer.map(\.targetState) == [.bottomHalf])
+    }
+
+    @Test("Double Up: Floating -> Maximized -> Top Half -> Down returns to Maximized")
+    func doubleUpToTopHalf() {
+        let displays = [primary]
+
+        // 1st Up: Maximized
+        let firstUp = SnapStateMachine.transition(
+            currentState: .floating,
+            action: .up,
+            currentFrame: original,
+            originalFrame: nil,
+            currentDisplay: primary,
+            allDisplays: displays
+        )
+        #expect(firstUp == .move(
+            frame: primary.visibleFrame,
+            newState: .maximized,
+            displayID: "primary",
+            shouldSaveOriginal: true
+        ))
+
+        // 2nd Up: Top Half
+        let secondUp = SnapStateMachine.transition(
+            currentState: .maximized,
+            action: .up,
+            currentFrame: primary.visibleFrame,
+            originalFrame: original,
+            currentDisplay: primary,
+            allDisplays: displays
+        )
+        #expect(secondUp == .move(
+            frame: CGRect(x: 0, y: 25, width: 1440, height: 437),
+            newState: .topHalf,
+            displayID: "primary",
+            shouldSaveOriginal: false
+        ))
+
+        // Down from Top Half: back to Maximized
+        let downToMax = SnapStateMachine.transition(
+            currentState: .topHalf,
+            action: .down,
+            currentFrame: CGRect(x: 0, y: 25, width: 1440, height: 437),
+            originalFrame: original,
+            currentDisplay: primary,
+            allDisplays: displays
+        )
+        #expect(downToMax == .move(
+            frame: primary.visibleFrame,
+            newState: .maximized,
+            displayID: "primary",
+            shouldSaveOriginal: false
+        ))
+
+        // Left from Top Half: Top-Left Quarter
+        let leftFromTop = SnapStateMachine.transition(
+            currentState: .topHalf,
+            action: .left,
+            currentFrame: CGRect(x: 0, y: 25, width: 1440, height: 437),
+            originalFrame: original,
+            currentDisplay: primary,
+            allDisplays: displays
+        )
+        #expect(leftFromTop == .move(
+            frame: CGRect(x: 0, y: 25, width: 720, height: 437),
+            newState: .topLeftQuarter,
+            displayID: "primary",
+            shouldSaveOriginal: false
+        ))
     }
 }

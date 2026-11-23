@@ -25,6 +25,10 @@ public enum SnapStateMachine {
             return CGRect(x: minX, y: minY, width: leftW, height: totalH)
         case .rightHalf:
             return CGRect(x: minX + leftW, y: minY, width: rightW, height: totalH)
+        case .topHalf:
+            return CGRect(x: minX, y: minY, width: totalW, height: topH)
+        case .bottomHalf:
+            return CGRect(x: minX, y: minY + topH, width: totalW, height: bottomH)
         case .topLeftQuarter:
             return CGRect(x: minX, y: minY, width: leftW, height: topH)
         case .bottomLeftQuarter:
@@ -56,6 +60,8 @@ public enum SnapStateMachine {
             .maximized,
             .leftHalf,
             .rightHalf,
+            .topHalf,
+            .bottomHalf,
             .topLeftQuarter,
             .bottomLeftQuarter,
             .topRightQuarter,
@@ -234,6 +240,22 @@ public enum SnapStateMachine {
                 shouldSaveOriginal: false
             )
 
+        case .topHalf:
+            return .move(
+                frame: frame(for: .topLeftQuarter, in: currentDisplay.visibleFrame),
+                newState: .topLeftQuarter,
+                displayID: currentDisplay.id,
+                shouldSaveOriginal: false
+            )
+
+        case .bottomHalf:
+            return .move(
+                frame: frame(for: .bottomLeftQuarter, in: currentDisplay.visibleFrame),
+                newState: .bottomLeftQuarter,
+                displayID: currentDisplay.id,
+                shouldSaveOriginal: false
+            )
+
         case .rightHalf:
             // Windows behavior: Right Half -> Left restores to Floating first
             let target = restoredFrame(originalFrame: originalFrame, in: currentDisplay.visibleFrame)
@@ -313,6 +335,22 @@ public enum SnapStateMachine {
                 shouldSaveOriginal: false
             )
 
+        case .topHalf:
+            return .move(
+                frame: frame(for: .topRightQuarter, in: currentDisplay.visibleFrame),
+                newState: .topRightQuarter,
+                displayID: currentDisplay.id,
+                shouldSaveOriginal: false
+            )
+
+        case .bottomHalf:
+            return .move(
+                frame: frame(for: .bottomRightQuarter, in: currentDisplay.visibleFrame),
+                newState: .bottomRightQuarter,
+                displayID: currentDisplay.id,
+                shouldSaveOriginal: false
+            )
+
         case .leftHalf:
             // Windows behavior: Left Half -> Right restores to Floating first
             let target = restoredFrame(originalFrame: originalFrame, in: currentDisplay.visibleFrame)
@@ -383,7 +421,23 @@ public enum SnapStateMachine {
             )
 
         case .maximized:
+            return .move(
+                frame: frame(for: .topHalf, in: currentDisplay.visibleFrame),
+                newState: .topHalf,
+                displayID: currentDisplay.id,
+                shouldSaveOriginal: false
+            )
+
+        case .topHalf:
             return .noOp
+
+        case .bottomHalf:
+            return .move(
+                frame: frame(for: .maximized, in: currentDisplay.visibleFrame),
+                newState: .maximized,
+                displayID: currentDisplay.id,
+                shouldSaveOriginal: false
+            )
 
         case .leftHalf:
             return .move(
@@ -433,8 +487,16 @@ public enum SnapStateMachine {
         currentDisplay: DisplayFrame
     ) -> SnapOutcome {
         switch state {
-        case .floating, .bottomLeftQuarter, .bottomRightQuarter:
+        case .floating, .bottomHalf, .bottomLeftQuarter, .bottomRightQuarter:
             return .minimize
+
+        case .topHalf:
+            return .move(
+                frame: frame(for: .maximized, in: currentDisplay.visibleFrame),
+                newState: .maximized,
+                displayID: currentDisplay.id,
+                shouldSaveOriginal: false
+            )
 
         case .maximized:
             let target = restoredFrame(originalFrame: originalFrame, in: currentDisplay.visibleFrame)

@@ -509,6 +509,8 @@ final class SnapAssistController {
         switch state {
         case .leftHalf: return "Mitad izquierda"
         case .rightHalf: return "Mitad derecha"
+        case .topHalf: return "Mitad superior"
+        case .bottomHalf: return "Mitad inferior"
         case .topLeftQuarter: return "Esquina superior izquierda"
         case .bottomLeftQuarter: return "Esquina inferior izquierda"
         case .topRightQuarter: return "Esquina superior derecha"
@@ -521,6 +523,8 @@ final class SnapAssistController {
         switch state {
         case .leftHalf: return "Mitad izquierda"
         case .rightHalf: return "Mitad derecha"
+        case .topHalf: return "Mitad superior"
+        case .bottomHalf: return "Mitad inferior"
         case .topLeftQuarter: return "Superior izquierda"
         case .bottomLeftQuarter: return "Inferior izquierda"
         case .topRightQuarter: return "Superior derecha"

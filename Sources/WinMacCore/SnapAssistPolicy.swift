@@ -34,6 +34,10 @@ public enum SnapAssistPolicy {
             candidateStates = [.rightHalf]
         case .rightHalf:
             candidateStates = [.leftHalf]
+        case .topHalf:
+            candidateStates = [.bottomHalf]
+        case .bottomHalf:
+            candidateStates = [.topHalf]
         case .topLeftQuarter:
             candidateStates = [.topRightQuarter, .bottomLeftQuarter, .bottomRightQuarter]
         case .bottomLeftQuarter:
